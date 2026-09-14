@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as tmImage from '@teachablemachine/image'
 import {
+  ArrowLeft,
   ArrowRight,
   Bot,
   BrainCircuit,
@@ -151,6 +152,7 @@ export default function App() {
 
   const modelRef = useRef(null)
   const canvasRef = useRef(null)
+  const finalSubmissionKeyRef = useRef(null)
 
   useEffect(() => {
     let active = true
@@ -191,6 +193,37 @@ export default function App() {
     return () => { active = false }
   }, [])
 
+  const resetRoundState = () => {
+    setSelectedObject(null)
+    setPredictions([])
+    setHasDrawing(false)
+    setRoundStartedAt(null)
+    setTimeLeft(DRAW_TIME_LIMIT)
+    setTimeExpired(false)
+    window.setTimeout(() => canvasRef.current?.clear?.(), 0)
+  }
+
+  const resetGameState = ({ keepPlayer = false } = {}) => {
+    setScreen('welcome')
+    if (!keepPlayer) {
+      setName('')
+      setDraftName('')
+    }
+    setRound(1)
+    setSelectedObject(null)
+    setUsedNames([])
+    setScore(0)
+    setResults([])
+    setPredictions([])
+    setHasDrawing(false)
+    setRoundStartedAt(null)
+    setSavedFinal(false)
+    setTimeLeft(DRAW_TIME_LIMIT)
+    setTimeExpired(false)
+    finalSubmissionKeyRef.current = null
+    window.setTimeout(() => canvasRef.current?.clear?.(), 0)
+  }
+
   const startGame = () => setScreen('name')
 
   const submitName = (event) => {
@@ -215,6 +248,47 @@ export default function App() {
     setRoundStartedAt(Date.now())
     setScreen('draw')
     window.setTimeout(() => canvasRef.current?.clear?.(), 0)
+  }
+
+  const goHome = () => {
+    resetGameState()
+  }
+
+  const goBack = () => {
+    if (screen === 'name') {
+      resetGameState()
+      return
+    }
+
+    if (screen === 'wheel') {
+      resetRoundState()
+      setUsedNames([])
+      setRound(1)
+      setScore(0)
+      setResults([])
+      setSavedFinal(false)
+      finalSubmissionKeyRef.current = null
+      setScreen('name')
+      return
+    }
+
+    if (screen === 'challenge') {
+      setUsedNames((prev) => prev.filter((item) => item !== selectedObject?.name))
+      resetRoundState()
+      setScreen('wheel')
+      return
+    }
+
+    if (screen === 'draw') {
+      setUsedNames((prev) => prev.filter((item) => item !== selectedObject?.name))
+      resetRoundState()
+      setScreen('wheel')
+      return
+    }
+
+    if (screen === 'final') {
+      resetGameState()
+    }
   }
 
   const askAI = async () => {
@@ -329,11 +403,15 @@ export default function App() {
   useEffect(() => {
     if (screen !== 'final' || savedFinal || results.length !== TOTAL_ROUNDS) return
 
+    const finalScore = results.filter((item) => item.correct).length
+    const finalSeconds = results.reduce((sum, item) => sum + item.seconds, 0)
+    const submissionKey = `${name}-${finalScore}-${finalSeconds}-${results.map((item) => `${item.round}:${item.target}:${item.correct}:${item.seconds}`).join('|')}`
+    if (finalSubmissionKeyRef.current === submissionKey) return
+    finalSubmissionKeyRef.current = submissionKey
+
     // Lock this result immediately so React re-renders cannot submit it twice.
     setSavedFinal(true)
 
-    const finalScore = results.filter((item) => item.correct).length
-    const finalSeconds = results.reduce((sum, item) => sum + item.seconds, 0)
     const entry = {
       id: `${Date.now()}-${Math.random()}`,
       name,
@@ -366,20 +444,7 @@ export default function App() {
   }, [screen, savedFinal, results, name])
 
   const restart = () => {
-    setScreen('welcome')
-    setName('')
-    setDraftName('')
-    setRound(1)
-    setSelectedObject(null)
-    setUsedNames([])
-    setScore(0)
-    setResults([])
-    setPredictions([])
-    setHasDrawing(false)
-    setRoundStartedAt(null)
-    setSavedFinal(false)
-    setTimeLeft(DRAW_TIME_LIMIT)
-    setTimeExpired(false)
+    resetGameState()
   }
 
   const activeStep =
@@ -409,6 +474,16 @@ export default function App() {
         </header>
       ) : (
         <header className="cinematic-nav inner-nav">
+          <div className="nav-controls" aria-label="Game navigation">
+            <button className="nav-control-btn" type="button" onClick={goBack} aria-label="Go back">
+              <ArrowLeft size={17} />
+              <span>Back</span>
+            </button>
+            <button className="nav-control-btn" type="button" onClick={goHome} aria-label="Go home">
+              <Home size={17} />
+              <span>Home</span>
+            </button>
+          </div>
           <div className="brand">
             <div className="brand-mark"><BrainCircuit size={24} /></div>
             <div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Sparkles, BrainCircuit } from 'lucide-react'
 import { OBJECTS } from '../utils/game'
 
@@ -30,6 +30,7 @@ function buildGradient(count) {
 export default function SpinWheel({ usedNames, onSelected }) {
   const [spinning, setSpinning] = useState(false)
   const [rotation, setRotation] = useState(0)
+  const spinTimeoutRef = useRef(null)
 
   const segments = useMemo(() => OBJECTS, [])
   const segmentAngle = 360 / segments.length
@@ -51,11 +52,20 @@ export default function SpinWheel({ usedNames, onSelected }) {
     setSpinning(true)
     setRotation(finalRotation)
 
-    window.setTimeout(() => {
+    spinTimeoutRef.current = window.setTimeout(() => {
       setSpinning(false)
       onSelected(picked.item)
+      spinTimeoutRef.current = null
     }, 3000)
   }
+
+  useEffect(() => {
+    return () => {
+      if (spinTimeoutRef.current) {
+        window.clearTimeout(spinTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="wheel-layout">
@@ -107,7 +117,7 @@ export default function SpinWheel({ usedNames, onSelected }) {
 
       <div className="wheel-help-row">
         <span className="wheel-help-dot" />
-        8 possible challenges · each selected object appears only once in your 3 rounds
+        7 possible challenges · each selected object appears only once in your 3 rounds
       </div>
     </div>
   )
