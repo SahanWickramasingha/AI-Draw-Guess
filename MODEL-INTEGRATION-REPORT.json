@@ -1,0 +1,15 @@
+{
+  "labels": [
+    "Cat",
+    "Fish",
+    "House",
+    "Star",
+    "Car",
+    "lion",
+    "monkey",
+    "scorpion",
+    "other"
+  ],
+  "imageSize": 224,
+  "otherPresent": true
+}

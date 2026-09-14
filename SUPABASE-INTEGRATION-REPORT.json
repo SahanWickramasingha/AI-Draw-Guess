@@ -1,0 +1,24 @@
+{
+  "supabase_url": "https://yvssofjvagavdcmghblt.supabase.co",
+  "leaderboard_table": "public.leaderboard",
+  "publishable_key_embedded": true,
+  "secret_key_embedded": false,
+  "active_game_challenges": [
+    "Car",
+    "Cat",
+    "Fish",
+    "House",
+    "Star",
+    "Lion",
+    "Scorpion"
+  ],
+  "leaderboard_features": [
+    "shared across devices",
+    "highest score first",
+    "fastest total time tiebreaker",
+    "localStorage offline fallback",
+    "live/sync/offline status in UI"
+  ],
+  "api_key_header": "apikey",
+  "authorization_bearer_publishable_key": false
+}
