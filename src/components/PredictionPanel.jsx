@@ -9,10 +9,10 @@ export default function PredictionPanel({ predictions, target, correct, unsure, 
           <h3>
             {rejectionReason === 'other'
               ? 'Drawing looks unclear / incomplete'
-              : rejectionReason === 'margin'
-                ? 'AI sees more than one possible answer'
+              : rejectionReason === 'monkey'
+                ? 'Monkey is not an active challenge'
                 : unsure
-                  ? 'AI is not confident enough'
+                  ? 'AI could not accept this drawing'
                   : correct
                     ? 'Correct recognition!'
                     : `AI guessed ${predictions[0].className}`}

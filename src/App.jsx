@@ -23,8 +23,6 @@ import PredictionPanel from './components/PredictionPanel'
 import { preprocessDrawingCanvas, hasEnoughDrawingDetail } from './utils/preprocessDrawing'
 import { fetchSharedLeaderboard, saveSharedScore } from './utils/supabaseLeaderboard'
 import {
-  CONFIDENCE_THRESHOLD,
-  CONFIDENCE_MARGIN,
   TOTAL_ROUNDS,
   getLeaderboard,
   saveLeaderboardEntry,
@@ -322,13 +320,13 @@ export default function App() {
       setPredictions(sorted)
 
       const top = sorted[0]
-      const second = sorted[1]
-      const margin = top.probability - (second?.probability ?? 0)
-      const isOther = ['other', 'monkey'].includes(top.className.toLowerCase())
-      const lowConfidence = top.probability < CONFIDENCE_THRESHOLD
-      const smallMargin = margin < CONFIDENCE_MARGIN
-      const unsure = isOther || lowConfidence || smallMargin
-      const correct = !unsure && top.className.toLowerCase() === selectedObject.name.toLowerCase()
+      const topClassName = top?.className ?? 'Unknown'
+      const topClassKey = topClassName.toLowerCase()
+      const targetKey = selectedObject.name.toLowerCase()
+      const isOther = topClassKey === 'other'
+      const isMonkey = topClassKey === 'monkey'
+      const unsure = isOther || isMonkey
+      const correct = !unsure && topClassKey === targetKey
 
       if (correct) setScore((value) => value + 1)
 
@@ -336,12 +334,11 @@ export default function App() {
         round,
         target: selectedObject.name,
         emoji: selectedObject.emoji,
-        predicted: top.className,
-        confidence: top.probability,
-        margin,
+        predicted: topClassName,
+        confidence: top?.probability ?? 0,
         correct,
         unsure,
-        rejectionReason: isOther ? 'other' : lowConfidence ? 'confidence' : smallMargin ? 'margin' : null,
+        rejectionReason: isOther ? 'other' : isMonkey ? 'monkey' : null,
         seconds,
       }])
     } finally {

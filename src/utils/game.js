@@ -9,8 +9,6 @@ export const OBJECTS = [
 ]
 
 export const TOTAL_ROUNDS = 3
-export const CONFIDENCE_THRESHOLD = 0.80
-export const CONFIDENCE_MARGIN = 0.20
 export const LEADERBOARD_RETENTION_HOURS = 24
 
 export function getLeaderboardCutoffDate(now = Date.now()) {
