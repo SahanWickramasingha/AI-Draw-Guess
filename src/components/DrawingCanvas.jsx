@@ -1,6 +1,8 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react'
 import { Eraser, PenLine, RotateCcw } from 'lucide-react'
 
+const ERASER_SIZE = 30
+
 const DrawingCanvas = forwardRef(function DrawingCanvas({ onDrawingChange, disabled = false }, ref) {
   const canvasRef = useRef(null)
   const drawingRef = useRef(false)
@@ -89,11 +91,12 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ onDrawingChange, disab
     const ctx = canvas.getContext('2d')
     const point = pointFromEvent(event)
     const previous = lastPointRef.current
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
 
     ctx.save()
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    ctx.lineWidth = brushSize * Math.min(window.devicePixelRatio || 1, 2)
+    ctx.lineWidth = (mode === 'erase' ? ERASER_SIZE : brushSize) * dpr
     ctx.strokeStyle = mode === 'erase' ? '#ffffff' : '#111827'
     ctx.beginPath()
     ctx.moveTo(previous.x, previous.y)
@@ -128,6 +131,7 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ onDrawingChange, disab
             type="button"
             className={`tool-btn ${mode === 'draw' ? 'active' : ''}`}
             onClick={() => setMode('draw')}
+            aria-pressed={mode === 'draw'}
             disabled={disabled}
           >
             <PenLine size={18} />
@@ -135,8 +139,9 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ onDrawingChange, disab
           </button>
           <button
             type="button"
-            className={`tool-btn ${mode === 'erase' ? 'active' : ''}`}
+            className={`tool-btn eraser-tool ${mode === 'erase' ? 'active' : ''}`}
             onClick={() => setMode('erase')}
+            aria-pressed={mode === 'erase'}
             disabled={disabled}
           >
             <Eraser size={18} />

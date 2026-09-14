@@ -401,8 +401,16 @@ radial-gradient(circle at 50% 45%,rgba(23,51,127,.8),rgba(5,14,36,.98) 55%,#020a
   content:"";
   position:absolute;
   inset:18px;
+  width:auto;
+  height:auto;
+  left:18px;
+  top:18px;
+  right:18px;
+  bottom:18px;
   z-index:0;
   border-radius:50%;
+  transform:none;
+  background:transparent;
   border:1px solid rgba(131,219,255,.14);
   box-shadow:inset 0 0 42px rgba(0,0,0,.22);
   pointer-events:none;
@@ -1039,7 +1047,140 @@ radial-gradient(circle at 50% 45%,rgba(23,51,127,.8),rgba(5,14,36,.98) 55%,#020a
   background:#ffb24a;
   box-shadow:0 0 12px rgba(255,178,74,.65);
 }
+.eraser-tool.active{
+  border-color:#ffb86b;
+  color:#8f4a00;
+  background:#fff2df;
+  box-shadow:0 0 0 2px rgba(255,184,107,.16);
+}
+.top-winners{
+  margin-bottom:18px;
+  padding:16px;
+  border-radius:18px;
+  border:1px solid rgba(255,217,112,.22);
+  background:linear-gradient(160deg,rgba(255,208,89,.07),rgba(37,216,255,.04));
+  box-shadow:inset 0 0 30px rgba(255,208,89,.04);
+}
+.top-winners-title{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.top-winners-title .eyebrow{
+  margin-bottom:0;
+}
+.top-winners-title strong{
+  color:#dbe9ff;
+  font:700 12px "Space Grotesk";
+  text-align:right;
+}
+.winner-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.winner-card{
+  --medal-color:rgba(145,174,212,.75);
+  min-width:0;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(91,174,255,.18);
+  background:rgba(255,255,255,.035);
+}
+.winner-card.rank-1{
+  --medal-color:#FFD700;
+  border-color:rgba(255,215,0,.42);
+  background:linear-gradient(160deg,rgba(255,215,0,.105),rgba(255,255,255,.035));
+  box-shadow:0 0 18px rgba(255,215,0,.10),inset 0 0 22px rgba(255,215,0,.045);
+}
+.winner-card.rank-2{
+  --medal-color:#C0C0C0;
+  border-color:rgba(192,192,192,.38);
+  background:linear-gradient(160deg,rgba(192,192,192,.075),rgba(255,255,255,.032));
+  box-shadow:0 0 16px rgba(192,192,192,.08),inset 0 0 20px rgba(192,192,192,.035);
+}
+.winner-card.rank-3{
+  --medal-color:#CD7F32;
+  border-color:rgba(205,127,50,.40);
+  background:linear-gradient(160deg,rgba(205,127,50,.09),rgba(255,255,255,.032));
+  box-shadow:0 0 16px rgba(205,127,50,.09),inset 0 0 20px rgba(205,127,50,.035);
+}
+.winner-rank{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:var(--medal-color);
+  font:800 12px "Space Grotesk";
+}
+.winner-card strong{
+  display:block;
+  margin-top:10px;
+  font-size:13px;
+  overflow-wrap:anywhere;
+}
+.winner-stats{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:9px;
+  color:#9fb5d2;
+  font-size:11px;
+  font-weight:800;
+}
+.leader-row.rank-1{
+  border:1px solid rgba(255,215,0,.18);
+  box-shadow:inset 3px 0 0 #FFD700,0 0 14px rgba(255,215,0,.055);
+}
+.leader-row.rank-1 .rank{
+  color:#FFD700;
+}
+.leader-row.rank-2{
+  border:1px solid rgba(192,192,192,.16);
+  box-shadow:inset 3px 0 0 #C0C0C0,0 0 13px rgba(192,192,192,.045);
+}
+.leader-row.rank-2 .rank{
+  color:#C0C0C0;
+}
+.leader-row.rank-3{
+  border:1px solid rgba(205,127,50,.17);
+  box-shadow:inset 3px 0 0 #CD7F32,0 0 13px rgba(205,127,50,.05);
+}
+.leader-row.rank-3 .rank{
+  color:#CD7F32;
+}
 @keyframes leaderboardPulse{
   0%,100%{transform:scale(.8);opacity:.55}
   50%{transform:scale(1.25);opacity:1}
+}
+
+@media(max-width:600px){
+  .top-winners{
+    padding:14px;
+  }
+  .top-winners-title{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .top-winners-title strong{
+    text-align:left;
+  }
+  .winner-grid{
+    grid-template-columns:1fr;
+  }
+  .winner-card{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    gap:10px;
+  }
+  .winner-card strong,
+  .winner-stats{
+    margin-top:0;
+  }
+  .winner-stats{
+    display:grid;
+    justify-items:end;
+  }
 }

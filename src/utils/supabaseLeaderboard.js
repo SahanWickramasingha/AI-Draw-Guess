@@ -7,6 +7,7 @@ const SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_mj8wVuyvSl69UjYFUjm0ZA_LruQUSBe'
 
 const TABLE = 'leaderboard'
+const RETENTION_HOURS = 24
 
 function headers(extra = {}) {
   return {
@@ -21,6 +22,7 @@ function mapRow(row) {
     name: row.name,
     score: row.score,
     totalSeconds: row.total_time,
+    createdAt: row.created_at,
     date: row.created_at
       ? new Date(row.created_at).toLocaleDateString()
       : '',
@@ -28,8 +30,10 @@ function mapRow(row) {
 }
 
 export async function fetchSharedLeaderboard(limit = 10) {
+  const cutoff = new Date(Date.now() - RETENTION_HOURS * 60 * 60 * 1000).toISOString()
   const query = new URLSearchParams({
     select: 'id,name,score,total_time,created_at',
+    created_at: `gte.${cutoff}`,
     order: 'score.desc,total_time.asc,created_at.asc',
     limit: String(limit),
   })

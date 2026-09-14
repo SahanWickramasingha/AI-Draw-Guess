@@ -1,24 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as tmImage from '@teachablemachine/image'
 import {
   ArrowLeft,
   ArrowRight,
   Bot,
   BrainCircuit,
-  CalendarDays,
   Clock3,
-  Cat,
-  Car,
   ChevronRight,
   CircleHelp,
-  Fish,
   Home,
-  House,
   Play,
   RotateCcw,
   ShieldCheck,
-  Sparkles,
-  Star,
   Trophy,
   UserRound,
   WandSparkles,
@@ -280,6 +273,12 @@ export default function App() {
     }
 
     if (screen === 'draw') {
+      if (lastResult?.round === round) {
+        if (lastResult.correct) {
+          setScore((value) => Math.max(0, value - 1))
+        }
+        setResults((prev) => prev.filter((item) => item.round !== round))
+      }
       setUsedNames((prev) => prev.filter((item) => item !== selectedObject?.name))
       resetRoundState()
       setScreen('wheel')
@@ -352,6 +351,7 @@ export default function App() {
 
   const lastResult = results[results.length - 1]
   const roundFinished = predictions.length > 0 || lastResult?.round === round
+  const topWinners = leaderboard.slice(0, 3)
 
   useEffect(() => {
     if (screen !== 'draw' || roundFinished || timeExpired || timeLeft <= 0) return
@@ -417,6 +417,7 @@ export default function App() {
       name,
       score: finalScore,
       totalSeconds: finalSeconds,
+      createdAt: new Date().toISOString(),
       date: new Date().toLocaleDateString(),
     }
 
@@ -794,12 +795,37 @@ export default function App() {
                 </div>
                 <Trophy size={24}/>
               </div>
+              <div className="top-winners">
+                <div className="top-winners-title">
+                  <span className="eyebrow">TOP CHALLENGE WINNERS</span>
+                  <strong>Best scores in the last 24 hours</strong>
+                </div>
+                {topWinners.length === 0 ? (
+                  <p className="muted">No winners yet.</p>
+                ) : (
+                  <div className="winner-grid">
+                    {topWinners.map((entry, index) => (
+                      <div className={`winner-card rank-${index + 1}`} key={`winner-${entry.id}`}>
+                        <div className="winner-rank">
+                          <Trophy size={18} />
+                          <span>#{index + 1}</span>
+                        </div>
+                        <strong>{entry.name}</strong>
+                        <div className="winner-stats">
+                          <span>{entry.score}/{TOTAL_ROUNDS}</span>
+                          <span>{entry.totalSeconds}s</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="leaderboard-list">
                 {leaderboard.length === 0 ? <p className="muted">No scores yet.</p> :
                   leaderboard.slice(0, 7).map((entry, index) => (
-                    <div className="leader-row" key={entry.id}>
+                    <div className={`leader-row rank-${index + 1}`} key={entry.id}>
                       <span className="rank">#{index + 1}</span>
-                      <div><strong>{entry.name}</strong><span>{entry.date}</span></div>
+                      <div><strong>{entry.name}</strong><span>{entry.date || 'Today'}</span></div>
                       <div className="leader-score"><strong>{entry.score}/{TOTAL_ROUNDS}</strong><span>{entry.totalSeconds}s</span></div>
                     </div>
                   ))

@@ -11,6 +11,11 @@ export const OBJECTS = [
 export const TOTAL_ROUNDS = 3
 export const CONFIDENCE_THRESHOLD = 0.80
 export const CONFIDENCE_MARGIN = 0.20
+export const LEADERBOARD_RETENTION_HOURS = 24
+
+export function getLeaderboardCutoffDate(now = Date.now()) {
+  return new Date(now - LEADERBOARD_RETENTION_HOURS * 60 * 60 * 1000)
+}
 
 export function pickRandomUnused(usedNames) {
   const available = OBJECTS.filter((item) => !usedNames.includes(item.name))
@@ -19,19 +24,32 @@ export function pickRandomUnused(usedNames) {
 
 export function getLeaderboard() {
   try {
+    const cutoff = getLeaderboardCutoffDate().getTime()
     return JSON.parse(localStorage.getItem('ai-draw-leaderboard') || '[]')
+      .filter((entry) => {
+        const createdAt = entry.createdAt || entry.created_at || entry.date
+        const time = createdAt ? new Date(createdAt).getTime() : 0
+        return Number.isFinite(time) && time >= cutoff
+      })
+      .sort(sortLeaderboardEntries)
   } catch {
     return []
   }
 }
 
+export function sortLeaderboardEntries(a, b) {
+  if (b.score !== a.score) return b.score - a.score
+  if (a.totalSeconds !== b.totalSeconds) return a.totalSeconds - b.totalSeconds
+
+  const aTime = new Date(a.createdAt || a.created_at || a.date || 0).getTime()
+  const bTime = new Date(b.createdAt || b.created_at || b.date || 0).getTime()
+  return aTime - bTime
+}
+
 export function saveLeaderboardEntry(entry) {
   const list = getLeaderboard()
   list.push(entry)
-  list.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score
-    return a.totalSeconds - b.totalSeconds
-  })
+  list.sort(sortLeaderboardEntries)
   const trimmed = list.slice(0, 10)
   localStorage.setItem('ai-draw-leaderboard', JSON.stringify(trimmed))
   return trimmed
