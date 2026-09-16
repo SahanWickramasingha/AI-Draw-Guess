@@ -1,14 +1,20 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react'
 import { Eraser, PenLine, RotateCcw } from 'lucide-react'
 
-const ERASER_SIZE = 30
-
 const DrawingCanvas = forwardRef(function DrawingCanvas({ onDrawingChange, disabled = false }, ref) {
   const canvasRef = useRef(null)
   const drawingRef = useRef(false)
   const lastPointRef = useRef(null)
   const [mode, setMode] = useState('draw')
   const [brushSize, setBrushSize] = useState(12)
+  const [eraserSize, setEraserSize] = useState(30)
+
+  const isErasing = mode === 'erase'
+  const activeSize = isErasing ? eraserSize : brushSize
+  const activeToolLabel = isErasing ? 'Eraser' : 'Brush'
+  const activeSizeMin = isErasing ? 12 : 4
+  const activeSizeMax = isErasing ? 50 : 28
+  const setActiveSize = isErasing ? setEraserSize : setBrushSize
 
   const fillWhite = () => {
     const canvas = canvasRef.current
@@ -96,8 +102,8 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ onDrawingChange, disab
     ctx.save()
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    ctx.lineWidth = (mode === 'erase' ? ERASER_SIZE : brushSize) * dpr
-    ctx.strokeStyle = mode === 'erase' ? '#ffffff' : '#111827'
+    ctx.lineWidth = activeSize * dpr
+    ctx.strokeStyle = isErasing ? '#ffffff' : '#111827'
     ctx.beginPath()
     ctx.moveTo(previous.x, previous.y)
     ctx.lineTo(point.x, point.y)
@@ -150,13 +156,13 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ onDrawingChange, disab
         </div>
 
         <label className="brush-control">
-          <span>Brush</span>
+          <span>{activeToolLabel} {activeSize}px</span>
           <input
             type="range"
-            min="4"
-            max="28"
-            value={brushSize}
-            onChange={(e) => setBrushSize(Number(e.target.value))}
+            min={activeSizeMin}
+            max={activeSizeMax}
+            value={activeSize}
+            onChange={(e) => setActiveSize(Number(e.target.value))}
             disabled={disabled}
           />
         </label>

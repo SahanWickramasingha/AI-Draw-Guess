@@ -24,7 +24,11 @@ import { preprocessDrawingCanvas, hasEnoughDrawingDetail } from './utils/preproc
 import { fetchSharedLeaderboard, saveSharedScore } from './utils/supabaseLeaderboard'
 import {
   TOTAL_ROUNDS,
+  canonicalClassName,
+  deriveScore,
   getLeaderboard,
+  getTopPrediction,
+  normalizeClassName,
   saveLeaderboardEntry,
 } from './utils/game'
 
@@ -126,7 +130,6 @@ export default function App() {
   const [round, setRound] = useState(1)
   const [selectedObject, setSelectedObject] = useState(null)
   const [usedNames, setUsedNames] = useState([])
-  const [score, setScore] = useState(0)
   const [results, setResults] = useState([])
   const [predictions, setPredictions] = useState([])
   const [isPredicting, setIsPredicting] = useState(false)
@@ -144,6 +147,7 @@ export default function App() {
   const modelRef = useRef(null)
   const canvasRef = useRef(null)
   const finalSubmissionKeyRef = useRef(null)
+  const predictionFinalizedRef = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -191,6 +195,7 @@ export default function App() {
     setRoundStartedAt(null)
     setTimeLeft(DRAW_TIME_LIMIT)
     setTimeExpired(false)
+    predictionFinalizedRef.current = false
     window.setTimeout(() => canvasRef.current?.clear?.(), 0)
   }
 
@@ -203,7 +208,6 @@ export default function App() {
     setRound(1)
     setSelectedObject(null)
     setUsedNames([])
-    setScore(0)
     setResults([])
     setPredictions([])
     setHasDrawing(false)
@@ -212,6 +216,7 @@ export default function App() {
     setTimeLeft(DRAW_TIME_LIMIT)
     setTimeExpired(false)
     finalSubmissionKeyRef.current = null
+    predictionFinalizedRef.current = false
     window.setTimeout(() => canvasRef.current?.clear?.(), 0)
   }
 
@@ -236,9 +241,63 @@ export default function App() {
     setHasDrawing(false)
     setTimeLeft(DRAW_TIME_LIMIT)
     setTimeExpired(false)
+    predictionFinalizedRef.current = false
     setRoundStartedAt(Date.now())
     setScreen('draw')
     window.setTimeout(() => canvasRef.current?.clear?.(), 0)
+  }
+
+  const finalizePrediction = ({
+    topPrediction,
+    seconds,
+    predictionList,
+    labels = [],
+    probabilities = [],
+    unsure = false,
+    rejectionReason = null,
+  }) => {
+    if (predictionFinalizedRef.current || !selectedObject) return
+    predictionFinalizedRef.current = true
+
+    if (predictionList) setPredictions(predictionList)
+
+    const targetRaw = selectedObject.name
+    const predictedRaw = topPrediction?.label ?? 'Unknown'
+    const target = canonicalClassName(targetRaw)
+    const predicted = canonicalClassName(predictedRaw)
+    const confidence = topPrediction?.probability ?? 0
+    const correct =
+      !unsure &&
+      normalizeClassName(predicted) === normalizeClassName(target)
+
+    if (import.meta.env.DEV) {
+      console.log({
+        labels,
+        probabilities,
+        topPrediction,
+        target: targetRaw,
+        predictedNormalized: normalizeClassName(topPrediction?.label),
+        targetNormalized: normalizeClassName(targetRaw),
+        correct,
+      })
+    }
+
+    const roundResult = {
+      round,
+      target,
+      emoji: selectedObject.emoji,
+      predicted,
+      confidence,
+      correct,
+      unsure,
+      rejectionReason,
+      seconds,
+    }
+
+    setResults((prev) => {
+      const completedResults = [...prev.filter((item) => item.round !== round), roundResult]
+      return completedResults
+    })
   }
 
   const goHome = () => {
@@ -255,7 +314,6 @@ export default function App() {
       resetRoundState()
       setUsedNames([])
       setRound(1)
-      setScore(0)
       setResults([])
       setSavedFinal(false)
       finalSubmissionKeyRef.current = null
@@ -272,10 +330,10 @@ export default function App() {
 
     if (screen === 'draw') {
       if (lastResult?.round === round) {
-        if (lastResult.correct) {
-          setScore((value) => Math.max(0, value - 1))
-        }
-        setResults((prev) => prev.filter((item) => item.round !== round))
+        setResults((prev) => {
+          const remainingResults = prev.filter((item) => item.round !== round)
+          return remainingResults
+        })
       }
       setUsedNames((prev) => prev.filter((item) => item !== selectedObject?.name))
       resetRoundState()
@@ -289,7 +347,7 @@ export default function App() {
   }
 
   const askAI = async () => {
-    if (!modelRef.current || !hasDrawing || !selectedObject || isPredicting) return
+    if (!modelRef.current || !hasDrawing || !selectedObject || isPredicting || predictionFinalizedRef.current) return
     setIsPredicting(true)
     try {
       const sourceCanvas = canvasRef.current?.getCanvas?.()
@@ -298,49 +356,37 @@ export default function App() {
 
       // Reject almost-empty / too-small drawings before asking the model.
       if (!hasEnoughDrawingDetail(prepared)) {
-        setPredictions([])
-        setResults((prev) => [...prev, {
-          round,
-          target: selectedObject.name,
-          emoji: selectedObject.emoji,
-          predicted: 'Not enough detail',
-          confidence: 0,
-          correct: false,
+        finalizePrediction({
+          topPrediction: { index: -1, label: 'Not enough detail', probability: 0 },
+          predictionList: [],
           unsure: true,
           rejectionReason: 'detail',
           seconds,
-        }])
+        })
         return
       }
 
       // Predict using the normalized 224x224 centered drawing rather than the
       // raw full-size game canvas.
       const raw = await modelRef.current.predict(prepared.canvas)
-      const sorted = [...raw].sort((a, b) => b.probability - a.probability)
-      setPredictions(sorted)
+      const labels = raw.map((item) => item.className)
+      const probabilities = raw.map((item) => item.probability)
+      const topPrediction = getTopPrediction(labels, probabilities)
+      const ranked = raw
+        .map((item, index) => ({
+          ...item,
+          className: item.className,
+          probability: probabilities[index],
+        }))
+        .sort((a, b) => b.probability - a.probability)
 
-      const top = sorted[0]
-      const topClassName = top?.className ?? 'Unknown'
-      const topClassKey = topClassName.toLowerCase()
-      const targetKey = selectedObject.name.toLowerCase()
-      const isOther = topClassKey === 'other'
-      const isMonkey = topClassKey === 'monkey'
-      const unsure = isOther || isMonkey
-      const correct = !unsure && topClassKey === targetKey
-
-      if (correct) setScore((value) => value + 1)
-
-      setResults((prev) => [...prev, {
-        round,
-        target: selectedObject.name,
-        emoji: selectedObject.emoji,
-        predicted: topClassName,
-        confidence: top?.probability ?? 0,
-        correct,
-        unsure,
-        rejectionReason: isOther ? 'other' : isMonkey ? 'monkey' : null,
+      finalizePrediction({
+        topPrediction,
+        predictionList: ranked,
+        labels,
+        probabilities,
         seconds,
-      }])
+      })
     } finally {
       setIsPredicting(false)
     }
@@ -349,6 +395,7 @@ export default function App() {
   const lastResult = results[results.length - 1]
   const roundFinished = predictions.length > 0 || lastResult?.round === round
   const topWinners = leaderboard.slice(0, 3)
+  const derivedCurrentScore = deriveScore(results)
 
   useEffect(() => {
     if (screen !== 'draw' || roundFinished || timeExpired || timeLeft <= 0) return
@@ -368,19 +415,11 @@ export default function App() {
       return
     }
 
-    setResults((prev) => [
-      ...prev,
-      {
-        round,
-        target: selectedObject.name,
-        emoji: selectedObject.emoji,
-        predicted: 'No drawing',
-        confidence: 0,
-        correct: false,
-        unsure: true,
-        seconds: DRAW_TIME_LIMIT,
-      },
-    ])
+    finalizePrediction({
+      topPrediction: { index: -1, label: 'No drawing', probability: 0 },
+      unsure: true,
+      seconds: DRAW_TIME_LIMIT,
+    })
   }, [screen, roundFinished, timeExpired, timeLeft, selectedObject, hasDrawing, modelStatus])
 
   const nextRound = () => {
@@ -394,13 +433,14 @@ export default function App() {
     setHasDrawing(false)
     setTimeLeft(DRAW_TIME_LIMIT)
     setTimeExpired(false)
+    predictionFinalizedRef.current = false
     setScreen('wheel')
   }
 
   useEffect(() => {
     if (screen !== 'final' || savedFinal || results.length !== TOTAL_ROUNDS) return
 
-    const finalScore = results.filter((item) => item.correct).length
+    const finalScore = deriveScore(results)
     const finalSeconds = results.reduce((sum, item) => sum + item.seconds, 0)
     const submissionKey = `${name}-${finalScore}-${finalSeconds}-${results.map((item) => `${item.round}:${item.target}:${item.correct}:${item.seconds}`).join('|')}`
     if (finalSubmissionKeyRef.current === submissionKey) return
@@ -617,7 +657,7 @@ export default function App() {
                 <h2>Spin your <span>AI challenge.</span></h2>
                 <p>Hi {name}, let the wheel choose what you draw next.</p>
               </div>
-              <div className="score-pill"><Trophy size={18}/> Score {score}/{TOTAL_ROUNDS}</div>
+              <div className="score-pill"><Trophy size={18}/> Score {derivedCurrentScore}/{TOTAL_ROUNDS}</div>
             </div>
 
             <div className="glass-panel futuristic-panel wheel-panel">
@@ -661,7 +701,7 @@ export default function App() {
                     <span>Drawing time</span>
                   </div>
                 </div>
-                <div className="score-pill"><Trophy size={18}/> Score {score}/{TOTAL_ROUNDS}</div>
+                <div className="score-pill"><Trophy size={18}/> Score {derivedCurrentScore}/{TOTAL_ROUNDS}</div>
               </div>
             </div>
 
@@ -763,10 +803,10 @@ export default function App() {
             <div className="glass-panel futuristic-panel final-card">
               <div className="trophy-orb"><Trophy size={42}/></div>
               <span className="eyebrow">GAME COMPLETE</span>
-              <h2>{score === 3 ? 'Perfect score!' : score >= 2 ? 'Great job!' : 'Nice try!'}</h2>
+              <h2>{derivedCurrentScore === 3 ? 'Perfect score!' : derivedCurrentScore >= 2 ? 'Great job!' : 'Nice try!'}</h2>
               <p className="muted">{name}, you completed all three AI drawing challenges.</p>
 
-              <div className="big-score"><strong>{score}</strong><span>/ {TOTAL_ROUNDS}</span></div>
+              <div className="big-score"><strong>{derivedCurrentScore}</strong><span>/ {TOTAL_ROUNDS}</span></div>
 
               <div className="round-summary">
                 {results.map((item) => (

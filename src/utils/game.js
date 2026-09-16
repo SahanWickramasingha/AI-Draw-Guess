@@ -11,6 +11,51 @@ export const OBJECTS = [
 export const TOTAL_ROUNDS = 3
 export const LEADERBOARD_RETENTION_HOURS = 24
 
+export const CANONICAL_LABELS = {
+  car: 'Car',
+  cat: 'Cat',
+  fish: 'Fish',
+  house: 'House',
+  star: 'Star',
+  lion: 'Lion',
+  scorpion: 'Scorpion',
+  other: 'Other',
+  others: 'Other',
+}
+
+export function normalizeClassName(value) {
+  return (value ?? '').trim().toLowerCase()
+}
+
+export function canonicalClassName(value) {
+  const normalized = normalizeClassName(value)
+  return CANONICAL_LABELS[normalized] ?? value
+}
+
+export function deriveScore(completedResults) {
+  return completedResults.filter((result) => result.correct).length
+}
+
+export function getTopPrediction(labels, probabilities) {
+  if (!labels.length || labels.length !== probabilities.length) {
+    throw new Error('Invalid model output')
+  }
+
+  let topIndex = 0
+
+  for (let index = 1; index < probabilities.length; index += 1) {
+    if (probabilities[index] > probabilities[topIndex]) {
+      topIndex = index
+    }
+  }
+
+  return {
+    index: topIndex,
+    label: labels[topIndex],
+    probability: probabilities[topIndex],
+  }
+}
+
 export function getLeaderboardCutoffDate(now = Date.now()) {
   return new Date(now - LEADERBOARD_RETENTION_HOURS * 60 * 60 * 1000)
 }
