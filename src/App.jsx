@@ -35,6 +35,7 @@ import {
 const MODEL_URL = '/model/model.json'
 const METADATA_URL = '/model/metadata.json'
 const DRAW_TIME_LIMIT = 20
+const OPEN_DAY_HOME_URL = 'https://ai-playground-open-day-2026.vercel.app/'
 
 function ColorGameIcon({ type }) {
   const common = { width: 48, height: 48, viewBox: '0 0 64 64', 'aria-hidden': true }
@@ -301,7 +302,7 @@ export default function App() {
   }
 
   const goHome = () => {
-    resetGameState()
+    window.location.href = OPEN_DAY_HOME_URL
   }
 
   const goBack = () => {
